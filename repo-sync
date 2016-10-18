@@ -1,0 +1,229 @@
+#!/bin/sh
+
+
+die(){
+	echo "$1" >&2
+	exit 1
+}
+
+usage(){
+	echo "Usage: $(basename "$0") PROYECT_NAME [--force --no-backup] update-system" >&2
+	echo "       $(basename "$0") PROYECT_NAME [--force ] update-repo" >&2
+	echo "       $(basename "$0") PROYECT_NAME {list|status}" >&2
+	die  "       $(basename "$0") PROYECT_NAME {track|untrack} FILE [FILE2 ... FILEn]"
+}
+
+list_files(){
+	REPO_DIR="$1"
+	find $REPO_DIR -type f -printf %P\n
+}
+
+do_status(){
+	REPO_DIR="$1"
+#       ........
+}
+
+do_list_files(){
+	echo "======================================================"
+	echo "Currently tracked files:"
+	echo ""
+	list_files "$1"
+	echo "======================================================"
+}
+
+do_system_update(){
+	SOURCE_DIR="$1"
+	TIMESTAMP="$(date "+%F_%H:%M")"
+	BACKUP_DIR="/BACKUP/$TIMESTAMP"
+	CMD="........."
+	echo "======================================================"
+	echo "Update from local repository to system: REPO => SYSTEM"
+	do_list_files "$SOURCE_DIR"
+	if [ "$DO_BACKUP" = "Y" ] ; then
+		echo "Backup directory: $BACKUP_DIR"
+	else
+		echo "No backup current files"
+	fi
+	echo "======================================================"
+	echo "Command to execute: $CMD"
+	echo "======================================================"
+	echo "**May the Force be with you**"
+	echo ""
+
+	if [ "$FORCE_UPDATE" != "Y" ] ; then
+		echo "Proceed (y/n)?:"
+		read a
+		if [ "$a" != "y" ] ; then
+			die "ABORTED!!!! Maybe next time, folk ;-)"
+		fi
+	fi
+	if $CMD ; then
+		echo "Update successfully."
+		if [ "$DO_BACKUP" = "Y" ] ; then
+ 			echo "Directory "$BACKUP_DIR" contains a backup of updated files"
+		fi
+	else
+		die "Some ERRORS appeared!!!!"
+	fi 
+}
+
+do_repo_update(){
+	TARGET_DIR="$1"
+	CMD="........."
+
+	echo "======================================================"
+	echo "Update from local repository to system: REPO => SYSTEM"
+	do_list_files "$TARGET_DIR"
+
+	echo "Command to execute: $CMD"
+	echo "======================================================"
+	echo " **May the Force be with you**\n"
+	echo ""
+	if $CMD ; then
+		echo "Update successfully"
+	else
+		die "Some ERRORS appeared!!!!"
+	fi 
+	
+}
+
+do_track_file(){
+	SYS_FILE="$1"
+	TR_DIR="$2"
+	[ -d "$TR_DIR" ] || mkdir -p  "$TR_DIR"
+#       .........
+}
+
+do_untrack_file(){
+	SYS_FILE="$1"
+	TR_DIR="$2"
+#       .........
+}
+
+# do some tests
+
+[ $# -lt 2 ] || usage
+which rsync >/dev/null || die "'rsync' utility not found. Please install the package"
+
+PROYECT_NAME="$1"
+[ -d "$PROYECT_NAME" ] || die "Proyect name invalid. (Please, create a folder named \"$PROYECT_NAME\" under current directory)"
+TR_DIR="$PROYECT_NAME/files/"
+
+shift
+
+FORCE_UPDATE="N"
+DO_BACKUP="Y"
+
+# search for 'force' or 'no-backup' options
+CONTINUE_SEARCH="Y"
+while [ "$CONTINUE_SEARCH" = "Y" ] ; do
+	case "$1" in
+		--force)
+			FORCE_UPDATE="Y"
+			shift
+			;;;
+		--no-backup)
+			DO_BACKUP="N"
+			shift
+			;;
+		*)
+			CONTINUE_SEARCH="N"
+			;;
+
+	esac
+done			
+
+ACTION="$1"
+shift
+
+case "$ACTION" in
+	update-system)
+		[ -d "$TR_DIR" ] || die "Source directory \"$TR_DIR\" not found. Nothing to update.Exiting"
+		[ $(id -u) -eq 0 ] || die "You must be root, my friend"
+		do_system_update "$TR_DIR"
+		;;
+	update-repo)
+		[ -d "$TR_DIR" ] || die "Destination directory \"$TR_DIR\" not found. Nothing to update.Exiting"
+		do_repo_update "$TR_DIR"
+		;;
+	track)
+		[ "$1" ] || usage
+		while [ "$1" ] ; do
+			if [ -r "$1" ] ; then
+				do_track_file "$1" "$TR_DIR"
+			else
+				echo "File: $1 not found (skipped)"
+			fi
+			shift
+		done
+		;;
+	untrack)
+		[ "$1" ] || usage
+		while [ "$1" ] ; do
+			if [ -r "$TR_DIR/$1" ] ; then
+				do_untrack_file "$1" "$TR_DIR"
+			else
+				echo "File: $TR_DIR/$1 not found (skipped)"
+			fi
+			shift
+		done
+		;;
+	list)
+		[ -d "$TR_DIR" ] || die "Source directory \"$TR_DIR\" not found. No files to list"
+		do_list_files "$TR_DIR"
+
+		;;
+	status)
+		[ -d "$TR_DIR" ] || die "Source directory \"$TR_DIR\" not found. No files to list"
+		do_status "$TR_DIR"
+
+		;;
+	*)
+		usage
+		;;
+esac
+
+
+
+		
+ if exists "files" directory
+[ -d "./files" ] || die "'files' directory not found. Please run this script inside the correct folder"
+
+# search for 'force' option
+if [ "$1" = "--force" ]; then
+	FORCE_UPDATE="Y"
+	shift
+else
+	FORCE_UPDATE="N"
+fi
+
+# test required parameter
+[ "$1" ] || usage
+
+REMOTE_SERVER="$1"
+TIMESTAMP="$(date "+%F_%H:%M")"
+BACKUP_DIR="/BACKUP/$TIMESTAMP"
+CMD="rsync -avx -b --backup-dir=$BACKUP_DIR ./files/ root@$REMOTE_SERVER:/"
+echo "Remote server: $REMOTE_SERVER"
+
+echo "Files to update:"
+( cd files; tree )
+
+echo "Command to execute: $CMD"
+echo "\n **May the Force be with you**\n"
+
+if [ "$FORCE_UPDATE" != "Y" ] ; then
+	echo "Proceed (y/n)?:"
+	read a
+	if [ "$a" != "y" ] ; then
+		die "ABORTED!!!! Maybe next time, folk ;-)"
+	fi
+fi
+if $CMD ; then
+	echo "Update successfully. Directory "$BACKUP_DIR" in the remote server contains a backup of updated files"
+else
+	die "Some ERRORS appeared!!!!"
+fi 
+
+exit 0
+
