@@ -35,13 +35,14 @@ do_system_update(){
 	SOURCE_DIR="$1"
 	TIMESTAMP="$(date "+%F_%H:%M")"
 	BACKUP_DIR="/BACKUP/$TIMESTAMP"
-	CMD="........."
 	echo "======================================================"
 	echo "Update from local repository to system: REPO => SYSTEM"
 	do_list_files "$SOURCE_DIR"
 	if [ "$DO_BACKUP" = "Y" ] ; then
+		CMD="rsync -av -b --backup-dir=$BACKUP_DIR $SOURCE_DIR /"
 		echo "Backup directory: $BACKUP_DIR"
 	else
+		CMD="rsync -av $SOURCE_DIR /"
 		echo "No backup current files"
 	fi
 	echo "======================================================"
